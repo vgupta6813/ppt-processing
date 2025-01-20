@@ -242,19 +242,19 @@ function App() {
                     {images.map((image) => (
                         <div className="col-md-4" key={image.id}>
                             <div className="card mb-4">
-                                <input
-                                    type="checkbox"
-                                    className="form-check-input"
-                                    onChange={() => handleSelectImage(image.id)}
-                                    checked={selectedImages.includes(image.id)}
-                                />
                                 <img
                                     src={`http://localhost:8080/api/images/${image.id}`}
                                     alt={image.imageName}
                                     className="card-img-top"
                                 />
                                 <div className="card-body">
-                                    <h5 className="card-title">{image.imageName}</h5>
+                                    <input
+                                        type="checkbox"
+                                        className="form-check-input"
+                                        onChange={() => handleSelectImage(image.id)}
+                                        checked={selectedImages.includes(image.id)}
+                                    />
+                                    <text className="card-title"> {image.imageName}</text>
                                 </div>
                             </div>
                         </div>

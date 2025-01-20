@@ -88,7 +88,8 @@ class OpenPresentationsController {
             System.getProperty("user.home") + "/OneDrive/*",
             System.getProperty("user.home") + "/OneDrive/Desktop",
             System.getProperty("user.home") + "/OneDrive/Downloads",
-            System.getProperty("user.home") + "/OneDrive/Documents/open presentations/"
+            System.getProperty("user.home") + "/OneDrive/Documents/open_presentations_one_drive",
+            System.getProperty("user.home") + "/OneDrive/Documents/"
         )
 
         println("vaishali common folder $commonFolders")
