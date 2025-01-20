@@ -151,7 +151,7 @@ function App() {
 
     return (
         <div className="App container">
-            <h1>Image Tagging and Presentation Editing</h1>
+            <h1>Slide Tagging and Presentation Editing</h1>
 
             {/* Search by Tag */}
             <div className="mb-4">
@@ -198,10 +198,10 @@ function App() {
                     onChange={(e) => setTag(e.target.value)}
                 />
                 <button className="btn btn-success mt-2" onClick={handleAddTag}>
-                    Add Tag to Selected Images
+                    Add Tag to Selected Slides
                 </button>
                 <button className="btn btn-danger mt-2" onClick={handleRemoveTag}>
-                    Remove Tags from Selected Images
+                    Remove Tags from Selected Slides
                 </button>
             </div>
 
@@ -230,7 +230,7 @@ function App() {
                     onClick={handleAddToPresentation}
                     disabled={!selectedPresentation || selectedImages.length === 0}
                 >
-                    Add Selected Images to Presentation
+                    Add Selected Slides to Presentation
                 </button>
             </div>
 
