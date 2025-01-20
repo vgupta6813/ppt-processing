@@ -15,9 +15,11 @@ class OpenPresentationsController {
 
     @GetMapping
     fun getOpenPresentations(): List<PresentationInfo> {
+        println("inside getOpenPresentations")
         val openPresentations = mutableListOf<PresentationInfo>()
 
         if (System.getProperty("os.name").lowercase().contains("win")) {
+            println("vaishali OS is windows")
             openPresentations.addAll(getPowerPointOpenFilesWindows())
         } else if (System.getProperty("os.name").lowercase().contains("mac")) {
             openPresentations.addAll(getOpenPresentationsMac())
@@ -29,8 +31,11 @@ class OpenPresentationsController {
     }
 
     private fun getPowerPointOpenFilesWindows(): List<PresentationInfo> {
+        println("inside getPowerPointOpenFilesWindows")
         val presentations = mutableListOf<PresentationInfo>()
 
+        // Check if there are open PowerPoint windows
+        println("vaishali Checking if there are open PowerPoint windows")
         com.sun.jna.platform.win32.User32.INSTANCE.EnumWindows(
             { hwnd, _ ->
                 val titleLength = com.sun.jna.platform.win32.User32.INSTANCE.GetWindowTextLength(hwnd) + 1
@@ -39,17 +44,13 @@ class OpenPresentationsController {
                 val windowTitle = String(title).trim()
 
                 if (windowTitle.contains(".pptx", ignoreCase = true)) {
-                    println("Detected PowerPoint window: $windowTitle")
-
-                    // Extract file name from the title
+                    // Attempt to retrieve the file path from the window title
                     val fileName = windowTitle.substringBeforeLast(".pptx").trim() + ".pptx"
                     val fullPath = searchFileSystemForPath(fileName)
 
                     if (fullPath != null) {
-                        println("Resolved full path: $fullPath")
+                        println("vaishali ==== fullPath $fullPath")
                         presentations.add(PresentationInfo(fileName, fullPath))
-                    } else {
-                        println("Could not resolve full path for: $fileName")
                     }
                 }
                 true
@@ -58,23 +59,6 @@ class OpenPresentationsController {
         )
 
         return presentations
-    }
-
-    private fun searchFileSystemForPath(fileName: String): String? {
-        val commonFolders = listOf(
-            System.getProperty("user.home") + "/Documents",
-            System.getProperty("user.home") + "/Downloads",
-            System.getProperty("user.home") + "/Desktop"
-        )
-
-        for (folder in commonFolders) {
-            val file = File(folder, fileName)
-            if (file.exists()) {
-                return file.absolutePath
-            }
-        }
-
-        return null
     }
 
     private fun getOpenPresentationsMac(): List<PresentationInfo> {
@@ -86,12 +70,41 @@ class OpenPresentationsController {
         lines.forEach { line ->
             val parts = line.trim().split("\\s+".toRegex(), limit = 9)
             val filePath = parts.lastOrNull()
-            if (filePath != null && Files.exists(Paths.get(filePath)) && filePath.endsWith(".pptx", true)) {
+            if (filePath != null && filePath.endsWith(".pptx", true)) {
                 val fileName = File(filePath).nameWithoutExtension
                 presentations.add(PresentationInfo(fileName, filePath))
             }
         }
 
         return presentations
+    }
+
+    private fun searchFileSystemForPath(fileName: String): String? {
+        println("inside searchFileSystemForPath")
+        val commonFolders = listOf(
+            System.getProperty("user.home") + "/Documents",
+            System.getProperty("user.home") + "/Downloads",
+            System.getProperty("user.home") + "/Desktop",
+            System.getProperty("user.home") + "/OneDrive/*",
+            System.getProperty("user.home") + "/OneDrive/Desktop",
+            System.getProperty("user.home") + "/OneDrive/Downloads",
+            System.getProperty("user.home") + "/OneDrive/Documents/open presentations/"
+        )
+
+        println("vaishali common folder $commonFolders")
+
+        for (folder in commonFolders) {
+            println("folder in commonFolders")
+            val file = File(folder, fileName)
+            val flag = file.exists()
+            println("vaishali file exists in folder -> $flag")
+            if (flag) {
+                val a = file.absolutePath
+                println("vaishali file path $a")
+                return a
+            }
+        }
+
+        return null
     }
 }

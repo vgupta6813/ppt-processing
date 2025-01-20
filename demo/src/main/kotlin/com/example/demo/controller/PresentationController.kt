@@ -1,81 +1,16 @@
 package com.example.demo.controller
 
-import com.example.demo.domain.Images
 import com.example.demo.reporsitory.ImageRepository
-import org.apache.poi.sl.usermodel.PictureData.PictureType
-import org.apache.poi.xslf.usermodel.XMLSlideShow
-import org.springframework.transaction.annotation.Transactional
-import org.springframework.web.bind.annotation.*
-import java.awt.image.BufferedImage
-import java.io.File
-import java.io.FileInputStream
-import java.io.FileOutputStream
-import javax.imageio.ImageIO
 import com.jacob.activeX.ActiveXComponent
 import com.jacob.com.Dispatch
-import com.jacob.com.Variant
+import org.springframework.web.bind.annotation.*
+import java.io.File
 
 @RestController
 @RequestMapping("/api/presentations")
 class PresentationController(
     val imageRepository: ImageRepository
 ) {
-//    @PostMapping("/add-slides")
-//    fun addImagesToPresentation(
-//        @RequestParam folderPath: String,
-//        @RequestBody imagePaths: List<String>
-//    ): String {
-//        println("Received folderPath: $folderPath")
-//        println("Received imagePaths: $imagePaths")
-//
-//        val presentationFile = File(folderPath)
-//        if (!presentationFile.exists()) {
-//            throw RuntimeException("Presentation not found: $folderPath")
-//        }
-//
-//        println("presentation path -> ${presentationFile.path}")
-//
-//        val ppt = XMLSlideShow(FileInputStream(presentationFile))
-//        val pageSize = ppt.pageSize // Dimensions of the presentation slides
-//
-//        println("page size -> ${pageSize.size}")
-//
-//        imagePaths.forEach { imagePath ->
-//            val slide = ppt.createSlide()
-//            val image = File(imagePath)
-//
-//            println("slide number ${slide.slideNumber}")
-//            println("image name ${image.name}")
-//
-//            if (!image.exists()) {
-//                throw RuntimeException("Image not found: $imagePath")
-//            }
-//
-//            try {
-//                println("inside try block")
-//                // Add the image to the slide
-//                val pictureData = ppt.addPicture(image, PictureType.PNG)
-//                val picture = slide.createPicture(pictureData)
-//
-//                // Set the picture dimensions to match the slide size
-//                picture.anchor = java.awt.Rectangle(0, 0, pageSize.width, pageSize.height)
-//            } catch (e: Exception) {
-//                println("Error adding image to slide: ${e.message}")
-//            }
-//        }
-//
-//        println("outside for loop")
-//        // Save the updated presentation
-//        FileOutputStream(presentationFile).use { fos ->
-//            ppt.write(fos)
-//        }
-//
-//        val response = "Images added to presentation: $folderPath"
-//
-//        println("response $response")
-//
-//        return response
-//    }
 
     @PostMapping("/add-slides")
     fun addSlidesToOpenPresentation(
@@ -94,18 +29,36 @@ class PresentationController(
     }
 
     private fun addSlidesToOpenPresentationWindows(folderPath: String, imageIds: List<Long>): String {
+        println("folder path $folderPath")
+        // Normalizing the file path of the selected presentation
+        val normalizedFolderPath = folderPath.replace("\\", "/")
         val powerPointApp = ActiveXComponent("PowerPoint.Application")
         val presentations = Dispatch.get(powerPointApp, "Presentations").toDispatch()
 
-        val targetPresentation = Dispatch.call(
-            presentations,
-            "Open",
-            folderPath,
-            true, // ReadOnly
-            false, // Untitled
-            false // WithWindow
-        ).toDispatch()
+        var targetPresentation: Dispatch? = null
+        val presentationsCount = Dispatch.get(presentations, "Count").toInt()
 
+        // Loop over open presentations to find the matching presentation
+        for (i in 1..presentationsCount) {
+            val presentation = Dispatch.call(presentations, "Item", i).toDispatch()
+            val path = Dispatch.get(presentation, "FullName").toString().replace("\\", "/")  // Normalize path
+
+            // Print paths for debugging
+            println("Checking presentation at path: $path")
+            println("Looking for presentation with path: $normalizedFolderPath")
+
+            if (path == normalizedFolderPath) {
+                println("Found matching presentation: $path")
+                targetPresentation = presentation
+                break
+            }
+        }
+
+        if (targetPresentation == null) {
+            throw RuntimeException("The specified presentation is not open.")
+        }
+
+        // Proceed with the logic to add slides to the found presentation
         imageIds.forEach { imageId ->
             val image = imageRepository.findById(imageId).orElseThrow {
                 RuntimeException("Image not found for ID: $imageId")
@@ -116,14 +69,7 @@ class PresentationController(
             val slideNumber = image.sourceSlideNumber
                 ?: throw RuntimeException("Source slide number missing for image: ${image.imageName}")
 
-            val sourcePresentation = Dispatch.call(
-                presentations,
-                "Open",
-                sourcePath,
-                true, // ReadOnly
-                false, // Untitled
-                false // WithWindow
-            ).toDispatch()
+            val sourcePresentation = Dispatch.call(presentations, "Open", sourcePath, true, false, false).toDispatch()
 
             val slides = Dispatch.get(sourcePresentation, "Slides").toDispatch()
             val slideToCopy = Dispatch.call(slides, "Item", slideNumber).toDispatch()
@@ -136,12 +82,36 @@ class PresentationController(
         }
 
         Dispatch.call(targetPresentation, "Save")
-        Dispatch.call(targetPresentation, "Close")
+//        Dispatch.call(targetPresentation, "Close")
         powerPointApp.safeRelease()
 
         return "Slides added to presentation on Windows."
     }
 
+    private fun getOpenPresentationByPath(filePath: String, presentations: Dispatch): Dispatch? {
+        // Log the file path we are searching for
+        println("Looking for presentation with path: $filePath")
+
+        // Loop through the open presentations and find the one matching the file path
+        val presentationsCount = Dispatch.get(presentations, "Count").toInt()
+        for (i in 1..presentationsCount) {
+            val presentation = Dispatch.call(presentations, "Item", i).toDispatch()
+            val path = Dispatch.get(presentation, "FullName").toString()
+
+            // Log the path of the currently open presentation
+            println("Checking presentation at path: $path")
+
+            if (path.equals(filePath, ignoreCase = true)) {
+                println("Found matching presentation: $path")
+                return presentation
+            }
+        }
+
+        println("Presentation not found for path: $filePath")
+        return null // If not found
+    }
+
+    // Mac implementation
     private fun addSlidesToOpenPresentationMac(folderPath: String, imageIds: List<Long>): String {
         val slidesScript = StringBuilder()
         slidesScript.appendLine("tell application \"Microsoft PowerPoint\"")
@@ -152,13 +122,8 @@ class PresentationController(
                 RuntimeException("Image not found for ID: $imageId")
             }
 
-            val sourcePath = image.sourcePresentationPath
-                ?: throw RuntimeException("Source presentation path missing for image: ${image.imageName}")
-            val slideNumber = image.sourceSlideNumber
-                ?: throw RuntimeException("Source slide number missing for image: ${image.imageName}")
-
-            println("sourcePath -> $sourcePath")
-            println("slideNumber -> $slideNumber")
+            val sourcePath = image.sourcePresentationPath ?: throw RuntimeException("Source presentation path missing for image: ${image.imageName}")
+            val slideNumber = image.sourceSlideNumber ?: throw RuntimeException("Source slide number missing for image: ${image.imageName}")
 
             slidesScript.appendLine("try")
             slidesScript.appendLine("set sourceFilePath to POSIX file \"$sourcePath\"")
@@ -204,15 +169,13 @@ class PresentationController(
         slidesScript.appendLine("close activePresentation")
         slidesScript.appendLine("end tell")
 
-        println("Generated AppleScript:\n$slidesScript")
-
         executeAppleScript(slidesScript.toString())
 
         return "Slides added to presentation on macOS."
     }
 
     private fun executeAppleScript(script: String) {
-        println("inside executeAppleScript Generated AppleScript:\n$script")
+        println("Generated AppleScript:\n$script")
 
         val processBuilder = ProcessBuilder("/usr/bin/osascript", "-e", script)
         val process = processBuilder.start()

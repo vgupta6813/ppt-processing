@@ -20,7 +20,7 @@ function App() {
     // Process PowerPoint presentations to generate images
     const processPresentations = async () => {
         try {
-            const folderPath = "/Users/vaishaligupta/Documents/presentations/"; // Replace with actual folder path
+            const folderPath = "/C:/Users/user/OneDrive/Documents/presentations/"; // Replace with actual folder path
             await axios.post("http://localhost:8080/api/images/process", null, {
                 params: { folderPath },
             });

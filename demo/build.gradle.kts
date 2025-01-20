@@ -37,14 +37,16 @@ dependencies {
 	implementation("org.jetbrains.kotlin:kotlin-scripting-compiler-embeddable:1.9.25")
 	implementation("org.jetbrains.kotlin:kotlin-scripting-common:1.9.25")
 	implementation("org.jetbrains.kotlin:kotlin-scripting-jvm:1.9.25")
-	implementation("org.springframework.boot:spring-boot-starter-data-jpa")
-	implementation("org.springframework.boot:spring-boot-starter-web")
-	implementation("org.postgresql:postgresql")
 
 	implementation("net.java.dev.jna:jna:5.12.1")
 	implementation("net.java.dev.jna:jna-platform:5.12.1")
 
-	implementation(files("libs/jacob-1.10.jar"))
+	implementation(files("C:/libs/jacob-1.21/jacob.jar"))
+	implementation(files("C:/libs/jacob-1.21/jacob-1.21-x64.dll"))
+
+	implementation("org.springframework.boot:spring-boot-starter-data-jpa")
+
+	implementation("mysql:mysql-connector-java:8.0.28")
 }
 
 kotlin {

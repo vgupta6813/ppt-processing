@@ -31,93 +31,6 @@ class ImageController(
     private val tagRepository: TagRepository,
     private val imageTagRepository: ImageTagRepository
 ) {
-
-//    @Transactional
-//    @PostMapping("/process")
-//    fun processPresentations(@RequestParam folderPath: String): String {
-//        println("inside processPresentations")
-//        val folder = File(folderPath)
-//
-//        if (!folder.exists() || !folder.isDirectory) {
-//            return "Invalid folder path: $folderPath"
-//        }
-//
-//        val pptFiles = folder.listFiles { file -> file.extension.lowercase() == "pptx" } ?: arrayOf()
-//        val pptFileNames = pptFiles.map { it.nameWithoutExtension }.toSet()
-//
-//        // Step 1: Delete orphan images and their tags
-//        val imagesInDb = imageRepository.findAll()
-//
-//        imagesInDb.forEach { image ->
-//            val baseName = image.imageName.substringBeforeLast('_') // Extract base name from image
-//            if (baseName !in pptFileNames) {
-//                // Delete the file from the folder
-//                val imageFile = File(folder, image.imageName)
-//                if (imageFile.exists() && imageFile.delete()) {
-//                    println("Deleted orphan image file: ${imageFile.absolutePath}")
-//                }
-//
-//                // Delete associated tags if they are no longer linked to other images
-//                val imageTags = imageTagRepository.findAllByImageId(image.id)
-//                imageTags.forEach { imageTag ->
-//                    val tag = imageTag.tag
-//                    imageTagRepository.delete(imageTag)
-//                    println("Deleted image-tag association for tag: ${tag.tagName}")
-//
-//                    // Check if the tag is still linked to any other images
-//                    if (!imageTagRepository.existsByTagId(tag.id)) {
-//                        tagRepository.delete(tag)
-//                        println("Deleted orphan tag: ${tag.tagName}")
-//                    }
-//                }
-//
-//                // Delete the image record from the database
-//                imageRepository.delete(image)
-//                println("Deleted orphan image from database: ${image.imageName}")
-//            }
-//        }
-//
-//        // Step 2: Process and save new images
-//        for (pptFile in pptFiles) {
-//            val pptFileName = pptFile.nameWithoutExtension
-//            val ppt = XMLSlideShow(FileInputStream(pptFile))
-//            val pageSize: Dimension = ppt.pageSize
-//
-//            var slideNumber = 1
-//            for (slide: XSLFSlide in ppt.slides) {
-//                val imageName = "${pptFileName}_$slideNumber.png"
-//
-//                println("currently processing image - $imageName")
-//
-//                // Check for duplicates in the database
-//                if (imageRepository.imageExists(imageName)) {
-//                    println("Image already exists in database: $imageName")
-//                    slideNumber++
-//                    continue
-//                }
-//
-//                // Generate image and save to folder
-//                val img = BufferedImage(pageSize.width, pageSize.height, BufferedImage.TYPE_INT_ARGB)
-//                val graphics = img.createGraphics()
-//                slide.draw(graphics)
-//
-//                val imageFile = File(folder, imageName)
-//                ImageIO.write(img, "png", imageFile)
-//                println("Generated and saved image file: ${imageFile.absolutePath}")
-//
-//                if (!imageRepository.imageExists(imageName)) { // Double-check in synchronized block
-//                    val image = Images(imageName = imageName, imagePath = imageFile.absolutePath)
-//                    imageRepository.save(image)
-//                    println("Saved image name and path to database: $imageName, ${imageFile.absolutePath}")
-//                }
-//
-//                slideNumber++
-//            }
-//        }
-//
-//        return "Images processed. Orphan images and their tags removed, new images saved."
-//    }
-
     @Transactional
     @PostMapping("/process")
     fun processPresentations(@RequestParam folderPath: String): String {
@@ -161,13 +74,19 @@ class ImageController(
 
             var slideNumber = 1
             for (slide in ppt.slides) {
+                println("slide in ppt slide ${slide}")
                 val imageName = "${pptFile.nameWithoutExtension}_$slideNumber.png"
                 val imageFile = File(folder, imageName)
 
+                // Check if the image already exists in the database
                 if (imageRepository.existsByImageName(imageName)) {
+                    println("Skipping $imageName, already exists in the database")
                     slideNumber++
                     continue
+                } else {
+                    println("Inserting image: $imageName")
                 }
+
 
                 // Generate image
                 val img = BufferedImage(pageSize.width, pageSize.height, BufferedImage.TYPE_INT_ARGB)
@@ -182,7 +101,7 @@ class ImageController(
                     sourcePresentationPath = pptFile.absolutePath, // Added field
                     sourceSlideNumber = slideNumber // Added field
                 )
-                imageRepository.save(image)
+                imageRepository.saveAndFlush(image)
 
                 slideNumber++
             }
